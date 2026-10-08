@@ -1,10 +1,47 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
-lightning_logs/
-outputs/
 *.py[cod]
 *$py.class
-.idea/
 *.pyc
-*.tar
 .DS_Store
+
+# IDEs & OS Files
+.idea/
+.vscode/
+
+# Environment
+.env
+venv/
+.venv/
+env/
+
+# PyTorch Lightning Checkpoints & Models (CRITICAL: 3GB files)
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.safetensors
+
+# Experiment Outputs & Logs
+results/
+lightning_logs/
+outputs/
+*.log
+
+# Data, Feature Arrays & Transcripts
+*.csv
+*.npy
+*.npz
+*.tar
+*.zip
+*.7z
+
+# Exclude preprocessed video/audio directories
+ouluvs2-preprocess/
+data/
+
+# Virtual Environment
+avsr_env/
+
+# Datasets
+OuluVS2/

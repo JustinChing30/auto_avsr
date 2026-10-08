@@ -87,7 +87,10 @@ class ModelModule(LightningModule):
         loss = self._step(batch, batch_idx, "train")
         batch_size = batch["inputs"].size(0)
         batch_sizes = self.all_gather(batch_size)
-        loss *= batch_sizes.size(0) / batch_sizes.sum()  # world size / batch size
+        if batch_sizes.ndim == 0:
+            loss *= 1.0 / batch_sizes
+        else:
+            loss *= batch_sizes.size(0) / batch_sizes.sum()  # world size / batch size
 
         self.log("monitoring_step", torch.tensor(self.global_step, dtype=torch.float32))
 

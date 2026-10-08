@@ -140,7 +140,7 @@ class DataModule(LightningDataModule):
         )
         dataloader = torch.utils.data.DataLoader(
             dataset,
-            num_workers=self.num_workers,
+            num_workers=0,
             batch_size=None,
             shuffle=self.train_shuffle,
             collate_fn=collate_pad,
@@ -162,7 +162,7 @@ class DataModule(LightningDataModule):
         dataloader = torch.utils.data.DataLoader(
             dataset,
             batch_size=None,
-            num_workers=self.num_workers,
+            num_workers=0,
             collate_fn=collate_pad,
         )
         return dataloader

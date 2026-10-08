@@ -5,16 +5,37 @@
 # Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
 import os
+import cv2
+import numpy as np
 import torch
 import torchaudio
-import torchvision
 
 
 def load_video(path):
     """
     rtype: torch, T x C x H x W
     """
-    vid = torchvision.io.read_video(path, pts_unit="sec", output_format="THWC")[0]
+    # Normalize Windows slashes and spaces
+    clean_path = os.path.normpath(path)
+
+    cap = cv2.VideoCapture(clean_path)
+    frames = []
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frames.append(frame)
+    cap.release()
+
+    if len(frames) == 0:
+        raise RuntimeError(
+            f"Failed to read any video frames from: {clean_path}\n"
+            f"File exists check: {os.path.exists(clean_path)}"
+        )
+
+    vid = np.stack(frames)
+    vid = torch.from_numpy(vid)
     vid = vid.permute((0, 3, 1, 2))
     return vid
 

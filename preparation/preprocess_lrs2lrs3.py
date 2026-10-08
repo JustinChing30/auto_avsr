@@ -91,7 +91,7 @@ text_transform = TextTransform()
 
 # Load Data
 args.data_dir = os.path.normpath(args.data_dir)
-if args.gpu_type != "cuda" or "mps":
+if args.gpu_type not in ["cuda", "mps", "cpu"]:
     raise ValueError("Invalid GPU type. Valid values for gpu_type are \"cuda\" and \"mps\". ")
 vid_dataloader = AVSRDataLoader(
     modality="video", detector=args.detector, convert_gray=False, gpu_type=args.gpu_type
@@ -166,6 +166,15 @@ elif dataset == "lrs2":
         filenames.sort()
     else:
         raise NotImplementedError
+elif dataset == "custom":
+    filenames = []
+    for root, _, files in os.walk(args.data_dir):
+        for file in files:
+            if file.lower().endswith((".mp4", ".avi", ".mov", ".mkv")):
+                filenames.append(os.path.join(root, file))
+    filenames.sort()
+else:
+    raise NotImplementedError(f"Dataset {dataset} is not supported.")
 
 unit = math.ceil(len(filenames) * 1.0 / args.groups)
 filenames = filenames[args.job_index * unit : (args.job_index + 1) * unit]
@@ -199,11 +208,13 @@ for data_filename in tqdm(filenames):
             f"{data_filename.replace(args.data_dir, dst_txt_dir)[:-4]}.txt"
         )
         trim_vid_data, trim_aud_data = video_data, audio_data
-        text_line_list = (
-            open(data_filename[:-4] + ".txt", "r").read().splitlines()[0].split(" ")
-        )
-        text_line = " ".join(text_line_list[2:])
-        content = text_line.replace("}", "").replace("{", "")
+        txt_path = data_filename[:-4] + ".txt"
+        if os.path.exists(txt_path):
+            text_line_list = open(txt_path, "r").read().splitlines()[0].split(" ")
+            text_line = " ".join(text_line_list[2:])
+            content = text_line.replace("}", "").replace("{", "")
+        else:
+            content = ""
 
         if trim_vid_data is None or trim_aud_data is None:
             continue
@@ -252,7 +263,11 @@ for data_filename in tqdm(filenames):
         )
         continue
 
-    splitted = split_file(data_filename[:-4] + ".txt", max_frames=seg_vid_len)
+    txt_path = data_filename[:-4] + ".txt"
+    if os.path.exists(txt_path):
+        splitted = split_file(txt_path, max_frames=seg_vid_len)
+    else:
+        splitted = [("", 0, len(video_data) / 25.0, len(video_data) / 25.0)]
     for i in range(len(splitted)):
         if len(splitted) == 1:
             content, start, end, duration = splitted[i]

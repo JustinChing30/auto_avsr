@@ -1,17 +1,19 @@
 import logging
 import os
+import sys
 from argparse import ArgumentParser
 
+import torch
 from average_checkpoints import ensemble
 from datamodule.data_module import DataModule
 from pytorch_lightning import seed_everything, Trainer
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.strategies import DDPStrategy
-from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.loggers import CSVLogger
 
 
-# Set environment variables and logger level
-# logging.basicConfig(level=logging.WARNING)
+# Enable Tensor Cores fast-math precision
+torch.set_float32_matmul_precision("high")
 
 
 def get_trainer(args):
@@ -27,17 +29,20 @@ def get_trainer(args):
     lr_monitor = LearningRateMonitor(logging_interval="step")
     callbacks = [checkpoint, lr_monitor]
 
+    strategy_choice = "auto" if sys.platform == "win32" else "ddp"
+
     return Trainer(
-        sync_batchnorm=True,
+        precision="16-mixed",  # Enable Mixed Precision to reduce VRAM and GPU load
+        sync_batchnorm=False,  # Set to False for single GPU training
         default_root_dir=args.exp_dir,
         max_epochs=args.max_epochs,
         num_nodes=args.num_nodes,
         devices=args.gpus,
         accelerator="gpu",
-        strategy=DDPStrategy(find_unused_parameters=False),
+        strategy=strategy_choice,
         callbacks=callbacks,
         reload_dataloaders_every_n_epochs=1,
-        logger=WandbLogger(name=args.exp_name, project="auto_avsr_lipreader", group=args.group_name),
+        logger=CSVLogger(save_dir=args.exp_dir, name=args.exp_name),
         gradient_clip_val=10.0,
     )
 
@@ -198,8 +203,7 @@ def init_logger(debug):
 
 def cli_main():
     args = parse_args()
-    #init_logger(args.debug)
-    args.slurm_job_id = os.environ["SLURM_JOB_ID"]
+    args.slurm_job_id = os.environ.get("SLURM_JOB_ID", "0")
     modelmodule = get_lightning_module(args)
     datamodule = DataModule(args, train_num_buckets=args.train_num_buckets)
     trainer = get_trainer(args)
